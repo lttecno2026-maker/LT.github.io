@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LT TECNO | Gestión y Ventas</title>
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-hover: #b8962d;
+            --black: #000000;
+            --dark-gray: #1a1a1a;
+            --white: #ffffff;
+            --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font); background-color: var(--black); color: var(--white); line-height: 1.6; }
+        .hidden { display: none !important; }
+        
+        /* Layout */
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .header { border-bottom: 2px solid var(--gold); padding: 20px 0; margin-bottom: 20px; text-align: center; }
+        .gold-text { color: var(--gold); }
+        
+        /* Componentes */
+        .card { background: var(--dark-gray); padding: 25px; border: 1px solid #333; border-radius: 8px; margin-bottom: 20px; }
+        .btn { padding: 12px 25px; border: none; cursor: pointer; font-weight: bold; text-transform: uppercase; border-radius: 4px; transition: 0.3s; }
+        .btn-gold { background: var(--gold); color: var(--black); }
+        .btn-gold:hover { background: var(--gold-hover); }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; background: #222; border: 1px solid #444; color: var(--white); border-radius: 4px; }
+        
+        /* Grid de Productos */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    </style>
+</head>
+<body>
+
+    <!-- VISTA: LOGIN -->
+    <div id="login-view" class="container" style="display:flex; justify-content:center; align-items:center; min-height:100vh;">
+        <div class="card" style="width: 100%; max-width: 400px;">
+            <h1 class="gold-text" style="text-align:center;">LT TECNO</h1>
+            <p style="text-align:center; margin-bottom: 20px;">Acceso al sistema</p>
+            <input type="email" id="email" placeholder="Usuario">
+            <input type="password" id="pass" placeholder="Contraseña">
+            <button class="btn btn-gold" style="width:100%" onclick="auth()">Ingresar Dueño</button>
+            <button class="btn" style="width:100%; margin-top:10px; background:transparent; border:1px solid var(--gold); color:var(--gold);" onclick="viewClient()">Ver Catálogo</button>
+        </div>
+    </div>
+
+    <!-- VISTA: DUEÑO -->
+    <div id="owner-view" class="hidden container">
+        <header class="header">
+            <h1 class="gold-text">Panel del Dueño</h1>
+            <button class="btn" onclick="location.reload()">Cerrar Sesión</button>
+        </header>
+        <div class="card">
+            <h3>Gestión de Inventario</h3>
+            <div id="inv-data"></div>
+        </div>
+    </div>
+
+    <!-- VISTA: CLIENTE -->
+    <div id="client-view" class="hidden container">
+        <header class="header">
+            <h1 class="gold-text">LT TECNO — Catálogo</h1>
+        </header>
+        <div id="catalog-grid" class="grid"></div>
+        
+        <div id="checkout-section" class="hidden card" style="margin-top: 40px; border-color: var(--gold);">
+            <h2>Finalizar Compra</h2>
+            <div id="checkout-form"></div>
+        </div>
+    </div>
+
+<script>
+    // Inicialización de datos
+    let db = JSON.parse(localStorage.getItem('lt_data')) || {
+        products: [
+            {id:1, name:'Notebook Pro 15"', price: 800000},
+            {id:2, name:'Auriculares Gaming', price: 95000},
+            {id:3, name:'Mouse RGB', price: 35000}
+        ]
+    };
+
+    function auth() {
+        if(document.getElementById('email').value === 'truenolauti@gmail.com' && document.getElementById('pass').value === '05012003Lau*') {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('owner-view').classList.remove('hidden');
+            document.getElementById('inv-data').innerHTML = `<pre>${JSON.stringify(db.products, null, 2)}</pre>`;
+        } else { alert('Credenciales incorrectas'); }
+    }
+
+    function viewClient() {
+        document.getElementById('login-view').classList.add('hidden');
+        document.getElementById('client-view').classList.remove('hidden');
+        renderCatalog();
+    }
+
+    function renderCatalog() {
+        const grid = document.getElementById('catalog-grid');
+        grid.innerHTML = db.products.map(p => `
+            <div class="card">
+                <h3>${p.name}</h3>
+                <p>Precio: $${p.price}</p>
+                <button class="btn btn-gold" onclick="renderCheckout(${p.id})">Seleccionar</button>
+            </div>
+        `).join('');
+    }
+
+    function renderCheckout(id) {
+        const p = db.products.find(x => x.id === id);
+        document.getElementById('checkout-section').classList.remove('hidden');
+        document.getElementById('checkout-form').innerHTML = `
+            <label>Forma de Envío:</label>
+            <select id="envio" onchange="updateForm()">
+                <option value="retiro">Retiro por Sucursal</option>
+                <option value="local">Envío Local (Rosario)</option>
+                <option value="nacional">Envío Nacional</option>
+            </select>
+            <div id="dynamic-inputs"></div>
+            <label>Método de Pago:</label>
+            <select id="pago" onchange="calcTotal(${p.price})">
+                <option value="trans">Transferencia (Alias: LT.TECNO2)</option>
+                <option value="mp">Mercado Pago (+6% Recargo)</option>
+                <option value="efec" class="only-retiro">Efectivo (Solo en sucursal)</option>
+            </select>
+            <h2 id="total-display">Total: $${p.price}</h2>
+            <button class="btn btn-gold" onclick="finalize(${p.price})">Pagar Ahora</button>
+        `;
+        updateForm();
+    }
+
+    function updateForm() {
+        const e = document.getElementById('envio').value;
+        const container = document.getElementById('dynamic-inputs');
+        const efec = document.querySelector('.only-retiro');
+        efec.style.display = (e === 'retiro') ? 'block' : 'none';
+        
+        if(e === 'local') container.innerHTML = '<input type="text" placeholder="Nombre"><input type="tel" placeholder="Teléfono">';
+        else if(e === 'nacional') container.innerHTML = '<input type="text" placeholder="Nombre"><input type="text" placeholder="Sucursal Correo"><input type="text" placeholder="Código Postal"><input type="tel" placeholder="Celular"><input type="email" placeholder="Email">';
+        else container.innerHTML = '<input type="text" placeholder="Nombre"><input type="tel" placeholder="Celular">';
+    }
+
+    function calcTotal(base) {
+        const p = document.getElementById('pago').value;
+        const total = (p === 'mp') ? base * 1.06 : base;
+        document.getElementById('total-display').innerText = "Total: $" + total.toFixed(2);
+    }
+
+    function finalize(base) {
+        const p = document.getElementById('pago').value;
+        if(p === 'mp') {
+            window.location.href = "https://link.mercadopago.com.ar/lttecno";
+        } else {
+            alert("Compra registrada. Gracias por elegir LT TECNO.");
+            location.reload();
+        }
+    }
+</script>
+</body>
+</html>
